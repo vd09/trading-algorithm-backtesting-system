@@ -18,14 +18,14 @@ func (be *BacktestEngine) Run() {
 	}
 }
 
-func (be *BacktestEngine) RecordPerformance(algoName string, signal algorithm.TradingSignal, data model.DataPoint) {
+func (be *BacktestEngine) RecordPerformance(algoName string, signal model.TradingSignal, data model.DataPoint) {
 	if _, exists := be.Performance[algoName]; !exists {
 		be.Performance[algoName] = PerformanceMetrics{}
 	}
 	metrics := be.Performance[algoName]
 	metrics.TotalRequests++
 
-	if signal.Buy || signal.Sell {
+	if signal.Action == model.Buy || signal.Action == model.Sell {
 		if isSuccess(signal, data) {
 			metrics.SuccessfulSignals++
 			profit := calculateProfit(signal, data)
@@ -38,12 +38,12 @@ func (be *BacktestEngine) RecordPerformance(algoName string, signal algorithm.Tr
 	be.Performance[algoName] = metrics
 }
 
-func isSuccess(signal algorithm.TradingSignal, data model.DataPoint) bool {
+func isSuccess(signal model.TradingSignal, data model.DataPoint) bool {
 	// Define the success criteria here
 	return true
 }
 
-func calculateProfit(signal algorithm.TradingSignal, data model.DataPoint) float64 {
+func calculateProfit(signal model.TradingSignal, data model.DataPoint) float64 {
 	// Calculate profit based on signal and data
 	return 0.0
 }

@@ -14,6 +14,12 @@ type Config struct {
 	Timespan      string
 	StartDate     string
 	EndDate       string
+	Logger        Logger
+}
+
+type Logger struct {
+	Level      string
+	SaveInFile bool
 }
 
 var AppConfig *Config
@@ -32,5 +38,13 @@ func InitConfig() {
 		Timespan:      viper.GetString("TIMESPAN"),
 		StartDate:     viper.GetString("START_DATE"),
 		EndDate:       viper.GetString("END_DATE"),
+		Logger:        getLoggerConfig(),
+	}
+}
+
+func getLoggerConfig() Logger {
+	return Logger{
+		Level:      viper.GetString("LOG_LEVEL"),
+		SaveInFile: viper.GetBool("LOG_TO_FILE"),
 	}
 }
