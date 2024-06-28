@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: trading-algorithm-backtesting-system
+    ports:
+      - "2112:2112"
+    networks:
+      - monitoring
+
+  prometheus:
+    build: monitor/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    volumes:
+      - ./monitor/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
+    volumes:
+      - ./monitor/backup:/var/lib/grafana
+      - ./monitor/grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin1
+
+networks:
+  monitoring:
+    driver: bridge

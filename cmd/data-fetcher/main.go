@@ -68,7 +68,7 @@ func validateFetchFunction() {
 		log.Fatalf("Error fetching data: %v", err)
 	}
 
-	//filename := "data/" + config.AppConfig.Ticker + "_" + config.AppConfig.StartDate + "_to_" + config.AppConfig.EndDate + ".csv"
+	//filename := "data/" + config.AppConfig.StockAction + "_" + config.AppConfig.StartDate + "_to_" + config.AppConfig.EndDate + ".csv"
 	//if err := datafetcher.SaveDataToCSV(response, filename); err != nil {
 	//	log.Fatalf("Error saving data to CSV: %v", err)
 	//}
