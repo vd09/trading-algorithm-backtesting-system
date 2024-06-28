@@ -1,0 +1,6 @@
+{"level":"info","timestamp":"2024-06-29T02:45:42.772+0530","caller":"logger-cmd/main.go:15","msg":"Starting the application...","version":"1.0.0"}
+{"level":"info","timestamp":"2024-06-29T02:45:42.773+0530","caller":"logger-cmd/main.go:22","msg":"This is an info message","attempt":3}
+{"level":"warn","timestamp":"2024-06-29T02:45:42.773+0530","caller":"logger-cmd/main.go:23","msg":"This is a warning message","warning":"potential issue"}
+{"level":"info","timestamp":"2024-06-29T02:49:54.120+0530","caller":"logger-cmd/main.go:15","msg":"Starting the application...","version":"1.0.0"}
+{"level":"info","timestamp":"2024-06-29T02:49:54.121+0530","caller":"logger-cmd/main.go:22","msg":"This is an info message","attempt":3}
+{"level":"warn","timestamp":"2024-06-29T02:49:54.121+0530","caller":"logger-cmd/main.go:23","msg":"This is a warning message","warning":"potential issue"}

@@ -7,7 +7,6 @@ import (
 	"github.com/vd09/trading-algorithm-backtesting-system/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var log *zap.Logger
@@ -34,13 +33,11 @@ func getEncoder() zapcore.Encoder {
 // getLogWriter returns a WriteSyncer for logging to file or stdout
 func getLogWriter(logToFile bool) zapcore.WriteSyncer {
 	if logToFile {
-		return zapcore.AddSync(&lumberjack.Logger{
-			Filename:   "logger/logs/app.log",
-			MaxSize:    10, // megabytes
-			MaxBackups: 3,
-			MaxAge:     28, // days
-			Compress:   true,
-		})
+		file, err := os.OpenFile("logger/logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			panic(err)
+		}
+		return zapcore.AddSync(file)
 	}
 	return zapcore.AddSync(os.Stdout)
 }
