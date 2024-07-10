@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"errors"
 	"math"
 
@@ -29,7 +30,7 @@ func NewBollingerBands(period int) *BollingerBands {
 }
 
 // AddDataPoint adds a new data point and updates the Bollinger Bands calculation.
-func (bb *BollingerBands) AddDataPoint(data model.DataPoint) error {
+func (bb *BollingerBands) AddDataPoint(ctx context.Context, data model.DataPoint) error {
 	if len(bb.History) > 0 && data.Time <= bb.History[len(bb.History)-1].Time {
 		return errors.New("data point is not in chronological order")
 	}

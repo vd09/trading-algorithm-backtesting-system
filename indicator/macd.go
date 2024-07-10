@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"errors"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
@@ -36,7 +37,7 @@ func NewMACD(shortPeriod, longPeriod, signalPeriod int) *MACD {
 }
 
 // AddDataPoint adds a new data point and updates the MACD calculation.
-func (m *MACD) AddDataPoint(data model.DataPoint) error {
+func (m *MACD) AddDataPoint(ctx context.Context, data model.DataPoint) error {
 	if len(m.History) > 0 && data.Time <= m.History[len(m.History)-1].Time {
 		return errors.New("data point is not in chronological order")
 	}

@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"errors"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
@@ -29,7 +30,7 @@ func NewRSI(period int) *RSI {
 }
 
 // AddDataPoint adds a new data point and updates the RSI calculation.
-func (r *RSI) AddDataPoint(data model.DataPoint) error {
+func (r *RSI) AddDataPoint(ctx context.Context, data model.DataPoint) error {
 	if len(r.History) > 0 && data.Time <= r.History[len(r.History)-1].Time {
 		return errors.New("data point is not in chronological order")
 	}

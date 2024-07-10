@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
@@ -15,8 +16,9 @@ func TestPivotPoint(t *testing.T) {
 		{Time: 3, Open: 12, High: 18, Low: 8, Close: 16},
 	}
 
+	ctx := context.Background()
 	for _, dp := range data {
-		err := pp.AddDataPoint(dp)
+		err := pp.AddDataPoint(ctx, dp)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

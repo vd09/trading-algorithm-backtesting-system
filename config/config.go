@@ -25,7 +25,12 @@ type Logger struct {
 var AppConfig *Config
 
 func InitConfig() {
-	viper.SetConfigFile(".env")
+	viper.SetConfigName(".env")
+	viper.SetConfigType("env")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("..")
+	viper.AddConfigPath("../..")
+	viper.AddConfigPath("../../..")
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("Error reading config file: %v", err)
 	}

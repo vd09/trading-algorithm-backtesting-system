@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"errors"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
@@ -30,7 +31,7 @@ func NewPivotPoint() *PivotPoint {
 }
 
 // AddDataPoint adds a new data point and updates the Pivot Point calculation.
-func (pp *PivotPoint) AddDataPoint(data model.DataPoint) error {
+func (pp *PivotPoint) AddDataPoint(ctx context.Context, data model.DataPoint) error {
 	if pp.PreviousData.Time > 0 && data.Time <= pp.PreviousData.Time {
 		return errors.New("data point is not in chronological order")
 	}

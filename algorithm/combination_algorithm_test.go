@@ -1,13 +1,16 @@
 package algorithm_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/algorithm"
 	"github.com/vd09/trading-algorithm-backtesting-system/indicator_adaptor"
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
-	"github.com/vd09/trading-algorithm-backtesting-system/utils"
+	"github.com/vd09/trading-algorithm-backtesting-system/utils/test_utils"
 )
+
+var ctx context.Context = context.Background()
 
 // MockIndicatorAdaptor is a mock implementation of the IndicatorAdaptor interface
 type MockIndicatorAdaptor struct {
@@ -19,15 +22,15 @@ func (m *MockIndicatorAdaptor) Name() string {
 	return m.name
 }
 
-func (m *MockIndicatorAdaptor) Clone() indicator_adaptor.IndicatorAdaptor {
+func (m *MockIndicatorAdaptor) Clone(ctx context.Context) indicator_adaptor.IndicatorAdaptor {
 	return m
 }
 
-func (m *MockIndicatorAdaptor) AddDataPoint(data model.DataPoint) error {
+func (m *MockIndicatorAdaptor) AddDataPoint(ctx context.Context, data model.DataPoint) error {
 	return nil
 }
 
-func (m *MockIndicatorAdaptor) GetSignal() model.StockAction {
+func (m *MockIndicatorAdaptor) GetSignal(ctx context.Context) model.StockAction {
 	return m.signal
 }
 
@@ -39,7 +42,7 @@ func TestCreateCombinationTradingAlgorithms(t *testing.T) {
 	adaptor5 := &MockIndicatorAdaptor{name: "Adaptor5", signal: model.Wait}
 
 	adaptors := []indicator_adaptor.IndicatorAdaptor{adaptor1, adaptor2, adaptor3, adaptor4, adaptor5}
-	tradingAlgorithms := algorithm.CreateCombinationTradingAlgorithms(adaptors)
+	tradingAlgorithms := algorithm.CreateCombinationTradingAlgorithms(context.Background(), adaptors)
 
 	expectedNames := []string{
 		"Adaptor1",
@@ -82,11 +85,11 @@ func TestCreateCombinationTradingAlgorithms(t *testing.T) {
 	}
 
 	// Assert that the number of generated algorithms matches the expected number
-	utils.AssertEqual(t, len(expectedNames), len(tradingAlgorithms), "Number of generated algorithms does not match")
+	test_utils.AssertEqual(t, len(expectedNames), len(tradingAlgorithms), "Number of generated algorithms does not match")
 
 	// Assert that each generated algorithm name is in the expected names map
 	for _, algo := range tradingAlgorithms {
-		utils.AssertTrue(t, expectedNamesMap[algo.Name()], "Algorithm name does not match any expected name "+algo.Name())
+		test_utils.AssertTrue(t, expectedNamesMap[algo.Name()], "Algorithm name does not match any expected name "+algo.Name())
 	}
 }
 
@@ -96,13 +99,13 @@ func TestCombinationTradingAlgorithm_Evaluate(t *testing.T) {
 	adaptor3 := &MockIndicatorAdaptor{name: "Adaptor3", signal: model.Buy}
 
 	adaptors := []indicator_adaptor.IndicatorAdaptor{adaptor1, adaptor2, adaptor3}
-	algorithm := algorithm.NewCombinationTradingAlgorithm(adaptors)
+	algorithm := algorithm.NewCombinationTradingAlgorithm(context.Background(), adaptors, test_utils.NewMockMetricsCollector(t))
 
 	data := model.DataPoint{Time: 1625097600}
-	signal := algorithm.Evaluate(data)
+	signal := algorithm.Evaluate(ctx, data)
 
 	// Assert that the signal is a buy signal
-	utils.AssertEqual(t, model.Buy, signal.Action, "Expected Buy signal")
+	test_utils.AssertEqual(t, model.StockAction(model.Buy), signal.Action, "Expected Buy signal")
 }
 
 func TestCombinationTradingAlgorithm_EvaluateMixed(t *testing.T) {
@@ -111,11 +114,11 @@ func TestCombinationTradingAlgorithm_EvaluateMixed(t *testing.T) {
 	adaptor3 := &MockIndicatorAdaptor{name: "Adaptor3", signal: model.Wait}
 
 	adaptors := []indicator_adaptor.IndicatorAdaptor{adaptor1, adaptor2, adaptor3}
-	algorithm := algorithm.NewCombinationTradingAlgorithm(adaptors)
+	algorithm := algorithm.NewCombinationTradingAlgorithm(context.Background(), adaptors, test_utils.NewMockMetricsCollector(t))
 
 	data := model.DataPoint{Time: 1625097600}
-	signal := algorithm.Evaluate(data)
+	signal := algorithm.Evaluate(ctx, data)
 
 	// Assert that the signal is a wait signal
-	utils.AssertEqual(t, model.Wait, signal.Action, "Expected Wait signal")
+	test_utils.AssertEqual(t, model.Wait, signal.Action, "Expected Wait signal")
 }

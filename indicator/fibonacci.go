@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"errors"
 	"math"
 
@@ -41,7 +42,7 @@ func NewFibonacci(size int) *Fibonacci {
 }
 
 // AddDataPoint adds a new data point and updates the Fibonacci calculation.
-func (f *Fibonacci) AddDataPoint(data model.DataPoint) error {
+func (f *Fibonacci) AddDataPoint(ctx context.Context, data model.DataPoint) error {
 	if len(f.History) > 0 && data.Time <= f.History[len(f.History)-1].Time {
 		return errors.New("data point is not in chronological order")
 	}

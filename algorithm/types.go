@@ -1,8 +1,12 @@
 package algorithm
 
-import "github.com/vd09/trading-algorithm-backtesting-system/model"
+import (
+	"context"
+
+	"github.com/vd09/trading-algorithm-backtesting-system/model"
+)
 
 type TradingAlgorithm interface {
 	Name() string
-	Evaluate(data model.DataPoint) model.TradingSignal
+	Evaluate(ctx context.Context, data model.DataPoint) model.TradingSignal
 }

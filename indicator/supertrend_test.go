@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
@@ -23,8 +24,9 @@ func TestSuperTrend(t *testing.T) {
 
 	st := NewSuperTrend(7, 3.0)
 
+	ctx := context.Background()
 	for _, dp := range dataPoints {
-		err := st.AddDataPoint(dp)
+		err := st.AddDataPoint(ctx, dp)
 		if err != nil {
 			t.Errorf("error adding data point: %v", err)
 		}

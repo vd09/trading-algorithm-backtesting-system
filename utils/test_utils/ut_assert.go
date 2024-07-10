@@ -1,4 +1,4 @@
-package utils
+package test_utils
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 // AssertEqual checks if two values are equal and reports an error if not.
 func AssertEqual(t *testing.T, expected, actual interface{}, message string) {
 	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("%s: expected %v, got %v", message, expected, actual)
+		t.Errorf("%s: expected %v (%T), got %v (%T)", message, expected, expected, actual, actual)
 	}
 }
 

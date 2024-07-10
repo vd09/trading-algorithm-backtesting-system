@@ -48,3 +48,8 @@ test:
 # Rebuild everything
 .PHONY: rebuild
 rebuild: clean build build-prometheus up
+
+.PHONY: generate-mocks
+generate-mocks:
+	@echo "Generating mocks..."
+	@go generate ./...

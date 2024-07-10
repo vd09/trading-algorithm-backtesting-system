@@ -111,11 +111,11 @@ func (zl *ZapLogger) SetLogLevel(level string) {
 
 // zapFieldsFromContext extracts zap fields from the context
 func zapFieldsFromContext(ctx context.Context) []zap.Field {
+	fields := []zap.Field{}
 	if ctx == nil {
-		return nil
+		return fields
 	}
 
-	fields := []zap.Field{}
 	if loggerFields, ok := ctx.Value("loggerFields").(map[string]interface{}); ok {
 		for k, v := range loggerFields {
 			fields = append(fields, zap.Any(k, v))
@@ -134,5 +134,6 @@ func InitLogger() {
 
 // GetLogger returns the global logger instance
 func GetLogger() LoggerInterface {
+	InitLogger()
 	return loggerInstance
 }

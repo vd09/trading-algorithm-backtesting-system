@@ -1,16 +1,19 @@
 package indicator_adaptor_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/indicator_adaptor"
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
+	"github.com/vd09/trading-algorithm-backtesting-system/utils/test_utils"
 )
 
 // TestNewRSIAdapter tests the initialization of a new RSIAdapter instance.
 func TestNewRSIAdapter(t *testing.T) {
-	adapter := indicator_adaptor.NewRSIAdapter(14, 100, 70.0, 30.0)
+	mock := test_utils.NewMockMetricsCollector(t)
+	adapter := indicator_adaptor.NewRSIAdapter(context.Background(), 14, 100, 70.0, 30.0, mock)
 
 	if adapter.RSI.Period != 14 {
 		t.Errorf("expected Period 14, got %d", adapter.RSI.Period)
@@ -28,14 +31,16 @@ func TestNewRSIAdapter(t *testing.T) {
 
 // TestAddDataPoint tests adding a new data point to the RSIAdapter.
 func TestRSIAdapterAddDataPoint(t *testing.T) {
-	adapter := indicator_adaptor.NewRSIAdapter(14, 100, 70.0, 30.0)
+	mock := test_utils.NewMockMetricsCollector(t)
+	adapter := indicator_adaptor.NewRSIAdapter(context.Background(), 14, 100, 70.0, 30.0, mock)
 
 	dataPoint := model.DataPoint{
 		Time:  time.Now().Unix(),
 		Close: 120.0,
 	}
 
-	err := adapter.AddDataPoint(dataPoint)
+	ctx := context.Background()
+	err := adapter.AddDataPoint(ctx, dataPoint)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -50,7 +55,7 @@ func TestRSIAdapterAddDataPoint(t *testing.T) {
 			Time:  time.Now().Add(time.Minute * time.Duration(i)).Unix(),
 			Close: 120.0 + float64(i),
 		}
-		err = adapter.AddDataPoint(dataPoint)
+		err = adapter.AddDataPoint(ctx, dataPoint)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -63,8 +68,10 @@ func TestRSIAdapterAddDataPoint(t *testing.T) {
 
 // TestGetSignal tests the signal generation logic of the RSIAdapter.
 func TestRSIAdapterGetSignal(t *testing.T) {
-	adapter := indicator_adaptor.NewRSIAdapter(14, 100, 70.0, 30.0)
+	mock := test_utils.NewMockMetricsCollector(t)
+	adapter := indicator_adaptor.NewRSIAdapter(context.Background(), 14, 100, 70.0, 30.0, mock)
 
+	ctx := context.Background()
 	dataPoints := []model.DataPoint{}
 	for i := 0; i < 20; i++ {
 		dataPoints = append(dataPoints, model.DataPoint{
@@ -74,14 +81,14 @@ func TestRSIAdapterGetSignal(t *testing.T) {
 	}
 
 	for _, data := range dataPoints {
-		err := adapter.AddDataPoint(data)
+		err := adapter.AddDataPoint(ctx, data)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	}
 
 	// Check the initial signal, should be Wait
-	signal := adapter.GetSignal()
+	signal := adapter.GetSignal(ctx)
 	if signal != model.Wait {
 		t.Errorf("expected signal %v, got %v", model.Wait, signal)
 	}
@@ -93,7 +100,7 @@ func TestRSIAdapterGetSignal(t *testing.T) {
 	}
 	adapter.HistoricalValues[14] = 65.0 // Cross below the overbought threshold
 
-	signal = adapter.GetSignal()
+	signal = adapter.GetSignal(ctx)
 	if signal != model.Sell {
 		t.Errorf("expected signal %v, got %v", model.Sell, signal)
 	}
@@ -105,7 +112,7 @@ func TestRSIAdapterGetSignal(t *testing.T) {
 	}
 	adapter.HistoricalValues[14] = 35.0 // Cross above the oversold threshold
 
-	signal = adapter.GetSignal()
+	signal = adapter.GetSignal(ctx)
 	if signal != model.Buy {
 		t.Errorf("expected signal %v, got %v", model.Buy, signal)
 	}

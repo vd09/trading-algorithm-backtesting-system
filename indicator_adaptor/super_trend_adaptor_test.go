@@ -1,51 +1,59 @@
 package indicator_adaptor_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/indicator_adaptor"
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
+	"github.com/vd09/trading-algorithm-backtesting-system/utils/test_utils"
 )
 
 func TestAddDataPoint_NonChronological(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 	data1 := model.DataPoint{Time: 2, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000}
 	data2 := model.DataPoint{Time: 1, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000}
 
-	err := sta.AddDataPoint(data1)
+	err := sta.AddDataPoint(ctx, data1)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	err = sta.AddDataPoint(data2)
+	err = sta.AddDataPoint(ctx, data2)
 	if err == nil || err.Error() != "data point is not in chronological order" {
 		t.Fatalf("Expected error for non-chronological data point, got: %v", err)
 	}
 }
 
 func TestAddDataPoint_DuplicateTimestamps(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 	data1 := model.DataPoint{Time: 1, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000}
 	data2 := model.DataPoint{Time: 1, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000}
 
-	err := sta.AddDataPoint(data1)
+	err := sta.AddDataPoint(ctx, data1)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	err = sta.AddDataPoint(data2)
+	err = sta.AddDataPoint(ctx, data2)
 	if err == nil || err.Error() != "data point is not in chronological order" {
 		t.Fatalf("Expected error for duplicate timestamp, got: %v", err)
 	}
 }
 
 func TestAddDataPoint_InsufficientData(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 	data := model.DataPoint{Time: 1, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000}
 
 	for i := 1; i < 14; i++ {
 		data.Time = int64(i)
-		err := sta.AddDataPoint(data)
+		err := sta.AddDataPoint(ctx, data)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -57,7 +65,9 @@ func TestAddDataPoint_InsufficientData(t *testing.T) {
 }
 
 func TestAddDataPoint_ExtremeValues(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 
 	for i := 1; i <= 14; i++ {
 		data := model.DataPoint{
@@ -68,7 +78,7 @@ func TestAddDataPoint_ExtremeValues(t *testing.T) {
 			Close:  1e10,
 			Volume: 1000,
 		}
-		err := sta.AddDataPoint(data)
+		err := sta.AddDataPoint(ctx, data)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -80,10 +90,12 @@ func TestAddDataPoint_ExtremeValues(t *testing.T) {
 }
 
 func TestAddDataPoint_NegativeOrZeroPrices(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 	data := model.DataPoint{Time: 1, Open: -100, High: 110, Low: 90, Close: 105, Volume: 1000}
 
-	err := sta.AddDataPoint(data)
+	err := sta.AddDataPoint(ctx, data)
 	if err == nil {
 		t.Fatalf("Expected error for negative prices, got nil")
 	} else if err.Error() != "data point contains negative or zero prices" {
@@ -91,7 +103,7 @@ func TestAddDataPoint_NegativeOrZeroPrices(t *testing.T) {
 	}
 
 	data = model.DataPoint{Time: 2, Open: 0, High: 0, Low: 0, Close: 0, Volume: 1000}
-	err = sta.AddDataPoint(data)
+	err = sta.AddDataPoint(ctx, data)
 	if err == nil {
 		t.Fatalf("Expected error for zero prices, got nil")
 	} else if err.Error() != "data point contains negative or zero prices" {
@@ -100,22 +112,26 @@ func TestAddDataPoint_NegativeOrZeroPrices(t *testing.T) {
 }
 
 func TestAddDataPoint_MissingFields(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 	data := model.DataPoint{Time: 1, Open: 100, High: 0, Low: 0, Close: 105, Volume: 1000}
 
-	err := sta.AddDataPoint(data)
+	err := sta.AddDataPoint(ctx, data)
 	if err == nil {
 		t.Fatalf("Expected error for missing high and low prices, got nil")
 	}
 }
 
 func TestAddDataPoint_RapidSuccession(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 	data := model.DataPoint{Time: 1, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000}
 
 	for i := 1; i <= 1000; i++ {
 		data.Time = int64(i)
-		err := sta.AddDataPoint(data)
+		err := sta.AddDataPoint(ctx, data)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -127,7 +143,9 @@ func TestAddDataPoint_RapidSuccession(t *testing.T) {
 }
 
 func TestAddDataPoint_NullDataPoint(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 	var data *model.DataPoint = nil
 
 	defer func() {
@@ -136,38 +154,44 @@ func TestAddDataPoint_NullDataPoint(t *testing.T) {
 		}
 	}()
 
-	sta.AddDataPoint(*data)
+	sta.AddDataPoint(ctx, *data)
 }
 
 func TestGetSignal_BeforeInitialization(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
-	signal := sta.GetSignal()
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
+	signal := sta.GetSignal(ctx)
 	if signal != model.Wait {
 		t.Fatalf("Expected signal to be Wait before initialization, got %v", signal)
 	}
 }
 
 func TestGetSignal_AfterInitialization_NoTrendChange(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 	data := model.DataPoint{Time: 1, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000}
 
 	// Add 14 data points to initialize
 	for i := 1; i <= 14; i++ {
 		data.Time = int64(i)
-		err := sta.AddDataPoint(data)
+		err := sta.AddDataPoint(ctx, data)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 	}
 
-	signal := sta.GetSignal()
+	signal := sta.GetSignal(ctx)
 	if signal != model.Wait {
 		t.Fatalf("Expected signal to be Wait after initialization with no trend change, got %v", signal)
 	}
 }
 
 func TestGetSignal_TrendChangeToUptrend(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 1.5)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 1.5, mock)
 
 	// Add 14 data points to initialize
 	for i := 1; i <= 14; i++ {
@@ -179,7 +203,7 @@ func TestGetSignal_TrendChangeToUptrend(t *testing.T) {
 			Close:  95, // Set close price to below the calculated SuperTrend line
 			Volume: 1000,
 		}
-		err := sta.AddDataPoint(data)
+		err := sta.AddDataPoint(ctx, data)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -187,19 +211,21 @@ func TestGetSignal_TrendChangeToUptrend(t *testing.T) {
 
 	// Add data point to switch to uptrend
 	data := model.DataPoint{Time: 15, Open: 100, High: 160, Low: 60, Close: 156, Volume: 1000}
-	err := sta.AddDataPoint(data)
+	err := sta.AddDataPoint(ctx, data)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	signal := sta.GetSignal()
+	signal := sta.GetSignal(ctx)
 	if signal != model.Buy {
 		t.Fatalf("Expected signal to be Buy, got %v", signal)
 	}
 }
 
 func TestGetSignal_TrendChangeToDowntrend(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 1)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 1, mock)
 
 	// Add 14 data points to initialize
 	for i := 1; i <= 14; i++ {
@@ -211,28 +237,30 @@ func TestGetSignal_TrendChangeToDowntrend(t *testing.T) {
 			Close:  105, // Set close price to above the calculated SuperTrend line
 			Volume: 1000,
 		}
-		err := sta.AddDataPoint(data)
+		err := sta.AddDataPoint(ctx, data)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 	}
-	err := sta.AddDataPoint(model.DataPoint{Time: 15, Open: 100, High: 160, Low: 60, Close: 156, Volume: 1000})
+	err := sta.AddDataPoint(ctx, model.DataPoint{Time: 15, Open: 100, High: 160, Low: 60, Close: 156, Volume: 1000})
 
 	// Add data point to switch to downtrend
 	data := model.DataPoint{Time: 16, Open: 100, High: 180, Low: 50, Close: 80, Volume: 1000}
-	err = sta.AddDataPoint(data)
+	err = sta.AddDataPoint(ctx, data)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	signal := sta.GetSignal()
+	signal := sta.GetSignal(ctx)
 	if signal != model.Sell {
 		t.Fatalf("Expected signal to be Sell, got %v", signal)
 	}
 }
 
 func TestGetSignal_NoTrendChange(t *testing.T) {
-	sta := indicator_adaptor.NewSuperTrendAdapter(14, 3.0)
+	ctx := context.Background()
+	mock := test_utils.NewMockMetricsCollector(t)
+	sta := indicator_adaptor.NewSuperTrendAdapter(ctx, 14, 3.0, mock)
 
 	// Add 14 data points to initialize
 	for i := 1; i <= 14; i++ {
@@ -244,7 +272,7 @@ func TestGetSignal_NoTrendChange(t *testing.T) {
 			Close:  105, // Set close price to above the calculated SuperTrend line
 			Volume: 1000,
 		}
-		err := sta.AddDataPoint(data)
+		err := sta.AddDataPoint(ctx, data)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -252,12 +280,12 @@ func TestGetSignal_NoTrendChange(t *testing.T) {
 
 	// Add data point with no trend change
 	data := model.DataPoint{Time: 15, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000}
-	err := sta.AddDataPoint(data)
+	err := sta.AddDataPoint(ctx, data)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	signal := sta.GetSignal()
+	signal := sta.GetSignal(ctx)
 	if signal != model.Wait {
 		t.Fatalf("Expected signal to be Wait, got %v", signal)
 	}

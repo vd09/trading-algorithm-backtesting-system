@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
@@ -27,8 +28,9 @@ func TestRSI(t *testing.T) {
 		{Time: 15, Close: 46.28},
 	}
 
+	ctx := context.Background()
 	for _, dp := range data {
-		err := rsi.AddDataPoint(dp)
+		err := rsi.AddDataPoint(ctx, dp)
 		if err != nil {
 			t.Errorf("Error adding data point: %v", err)
 		}

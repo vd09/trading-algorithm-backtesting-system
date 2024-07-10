@@ -1,16 +1,9 @@
 package backtesting
 
 import (
-	"github.com/vd09/trading-algorithm-backtesting-system/algorithm"
 	"github.com/vd09/trading-algorithm-backtesting-system/datafetcher"
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
 )
-
-type BacktestEngine struct {
-	Algorithms     []algorithm.TradingAlgorithm
-	Performance    map[string]PerformanceMetrics
-	HistoricalData []model.DataPoint
-}
 
 func (be *BacktestEngine) LoadData(request *model.HistoricalDataRequest) error {
 	data, err := be.loadHistoricalData(request)

@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -18,8 +19,9 @@ func TestBollingerBands(t *testing.T) {
 	}
 
 	// Adding less than 20 data points should not update the Bollinger Bands values
+	ctx := context.Background()
 	for _, dp := range dataPoints[:19] {
-		err := bb.AddDataPoint(dp)
+		err := bb.AddDataPoint(ctx, dp)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -30,7 +32,7 @@ func TestBollingerBands(t *testing.T) {
 	}
 
 	// Adding the 20th data point should update the Bollinger Bands values
-	err := bb.AddDataPoint(dataPoints[19])
+	err := bb.AddDataPoint(ctx, dataPoints[19])
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -41,7 +43,7 @@ func TestBollingerBands(t *testing.T) {
 
 	// Adding more data points should keep updating the Bollinger Bands values
 	for _, dp := range dataPoints[20:] {
-		err := bb.AddDataPoint(dp)
+		err := bb.AddDataPoint(ctx, dp)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -52,7 +54,7 @@ func TestBollingerBands(t *testing.T) {
 	}
 
 	// Test adding a data point with a timestamp earlier than the last one
-	err = bb.AddDataPoint(model.DataPoint{Time: dataPoints[18].Time, Close: 105.0})
+	err = bb.AddDataPoint(ctx, model.DataPoint{Time: dataPoints[18].Time, Close: 105.0})
 	if err == nil {
 		t.Errorf("expected error for out-of-order data point, got nil")
 	}

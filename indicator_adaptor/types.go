@@ -1,10 +1,14 @@
 package indicator_adaptor
 
-import "github.com/vd09/trading-algorithm-backtesting-system/model"
+import (
+	"context"
+
+	"github.com/vd09/trading-algorithm-backtesting-system/model"
+)
 
 type IndicatorAdaptor interface {
 	Name() string
-	Clone() IndicatorAdaptor
-	AddDataPoint(data model.DataPoint) error
-	GetSignal() model.StockAction
+	Clone(ctx context.Context) IndicatorAdaptor
+	AddDataPoint(ctx context.Context, data model.DataPoint) error
+	GetSignal(ctx context.Context) model.StockAction
 }

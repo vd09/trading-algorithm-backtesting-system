@@ -1,12 +1,12 @@
 package model
 
 // StockAction represents the possible actions in the stock market.
-type StockAction int
+type StockAction string
 
 const (
-	Buy StockAction = iota
-	Sell
-	Wait
+	Wait StockAction = "wait"
+	Sell             = "sell"
+	Buy              = "buy"
 )
 
 type TradingSignal struct {

@@ -2,4 +2,6 @@ Act as a 10+ year experienced software engineer and understand below code
 there is an issue in the below UT you have the proper code, what could be the reason, don't code yet
 yes, please update this function
 Act as a 10+ year experienced software engineer and suggest me a way to approch below problem don't code yet
+is there any optimization I can consider in the code, just give me a theory, don't do code, I want to discuss with you first
+
 

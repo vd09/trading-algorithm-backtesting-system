@@ -1,12 +1,14 @@
 package indicator_adaptor_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/indicator"
 	"github.com/vd09/trading-algorithm-backtesting-system/indicator_adaptor"
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
+	"github.com/vd09/trading-algorithm-backtesting-system/utils/test_utils"
 )
 
 // TestNewPivotPointAdapter tests the initialization of a new PivotPointAdapter instance.
@@ -14,7 +16,8 @@ func TestNewPivotPointAdapter(t *testing.T) {
 	maxTotalHistoricalData := 100
 	threshold := 3
 
-	adapter := indicator_adaptor.NewPivotPointAdapter(maxTotalHistoricalData, threshold)
+	mock := test_utils.NewMockMetricsCollector(t)
+	adapter := indicator_adaptor.NewPivotPointAdapter(context.Background(), maxTotalHistoricalData, threshold, mock)
 
 	if adapter.MaxTotalHistoricalData != maxTotalHistoricalData {
 		t.Errorf("expected MaxTotalHistoricalData %d, got %d", maxTotalHistoricalData, adapter.MaxTotalHistoricalData)
@@ -32,7 +35,8 @@ func TestPivotPointAddDataPoint(t *testing.T) {
 	maxTotalHistoricalData := 100
 	threshold := 3
 
-	adapter := indicator_adaptor.NewPivotPointAdapter(maxTotalHistoricalData, threshold)
+	mock := test_utils.NewMockMetricsCollector(t)
+	adapter := indicator_adaptor.NewPivotPointAdapter(context.Background(), maxTotalHistoricalData, threshold, mock)
 
 	dataPoint := model.DataPoint{
 		Time:  time.Now().Unix(),
@@ -41,7 +45,8 @@ func TestPivotPointAddDataPoint(t *testing.T) {
 		Close: 120.0,
 	}
 
-	if err := adapter.AddDataPoint(dataPoint); err != nil {
+	ctx := context.Background()
+	if err := adapter.AddDataPoint(ctx, dataPoint); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
@@ -63,12 +68,14 @@ func TestPivotPointGetSignal(t *testing.T) {
 	maxTotalHistoricalData := 5
 	threshold := 0
 
-	adapter := indicator_adaptor.NewPivotPointAdapter(maxTotalHistoricalData, threshold)
+	mock := test_utils.NewMockMetricsCollector(t)
+	adapter := indicator_adaptor.NewPivotPointAdapter(context.Background(), maxTotalHistoricalData, threshold, mock)
 
 	dataPoints := generateTestDataPoints(10)
 
+	ctx := context.Background()
 	for _, data := range dataPoints {
-		if err := adapter.AddDataPoint(data); err != nil {
+		if err := adapter.AddDataPoint(ctx, data); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	}
@@ -108,7 +115,8 @@ func generateTestDataPoints(count int) []model.DataPoint {
 
 // verifySignal checks the signal from the adapter and compares it with the expected signal.
 func verifySignal(t *testing.T, adapter *indicator_adaptor.PivotPointAdapter, expectedSignal model.StockAction) {
-	signal := adapter.GetSignal()
+	ctx := context.Background()
+	signal := adapter.GetSignal(ctx)
 	if signal != expectedSignal {
 		t.Errorf("expected signal %v, got %v", expectedSignal, signal)
 	}

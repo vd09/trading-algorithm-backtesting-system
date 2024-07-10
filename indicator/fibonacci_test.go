@@ -1,9 +1,11 @@
 package indicator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
+	"github.com/vd09/trading-algorithm-backtesting-system/utils/test_utils"
 )
 
 func TestFibonacci(t *testing.T) {
@@ -17,8 +19,9 @@ func TestFibonacci(t *testing.T) {
 		{Time: 5, High: 140, Low: 120, Close: 135},
 	}
 
+	ctx := context.Background()
 	for _, dp := range dataPoints {
-		err := fib.AddDataPoint(dp)
+		err := fib.AddDataPoint(ctx, dp)
 		if err != nil {
 			t.Fatalf("Failed to add data point: %v", err)
 		}
@@ -35,8 +38,6 @@ func TestFibonacci(t *testing.T) {
 	}
 
 	for level, value := range expectedLevels {
-		if levels[level] != value {
-			t.Errorf("Expected %s to be %f, but got %f", level, value, levels[level])
-		}
+		test_utils.AssertEqual(t, levels[level], value, "")
 	}
 }

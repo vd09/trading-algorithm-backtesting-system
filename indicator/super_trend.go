@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"context"
 	"errors"
 	"math"
 
@@ -28,7 +29,7 @@ func NewSuperTrend(period int, multiplier float64) *SuperTrend {
 }
 
 // AddDataPoint adds a new data point and updates the Super Trend calculation.
-func (st *SuperTrend) AddDataPoint(data model.DataPoint) error {
+func (st *SuperTrend) AddDataPoint(ctx context.Context, data model.DataPoint) error {
 	if len(st.History) > 0 && data.Time <= st.History[len(st.History)-1].Time {
 		return errors.New("data point is not in chronological order")
 	}

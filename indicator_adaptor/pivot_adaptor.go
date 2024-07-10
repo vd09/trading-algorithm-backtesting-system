@@ -1,65 +1,117 @@
 package indicator_adaptor
 
 import (
+	"context"
+	"fmt"
 	"math"
 
+	"github.com/vd09/trading-algorithm-backtesting-system/constraint"
 	"github.com/vd09/trading-algorithm-backtesting-system/indicator"
+	"github.com/vd09/trading-algorithm-backtesting-system/logger"
 	"github.com/vd09/trading-algorithm-backtesting-system/model"
+	"github.com/vd09/trading-algorithm-backtesting-system/monitor"
 	"github.com/vd09/trading-algorithm-backtesting-system/utils"
+	"go.uber.org/zap"
 )
 
-// PivotPointAdapter handles a single PivotPoint indicator and maintains historical values.
+const (
+	PIVOT_LEVEL_LABEL = "pivot_level_type"
+)
+
+type PivotPointMetrics struct {
+	SignalCounter monitor.CounterMetric
+	LevelGauge    monitor.GaugeMetric
+	monitor       monitor.Monitoring
+}
+
 type PivotPointAdapter struct {
 	PivotPoint             *indicator.PivotPoint
 	MaxTotalHistoricalData int
 	HistoricalValues       []model.DataPoint
 	CurrentData            model.DataPoint
 	Threshold              int
+	logger                 logger.LoggerInterface
+	metrics                *PivotPointMetrics
 }
 
-// NewPivotPointAdapter initializes a new PivotPointAdapter instance.
-func NewPivotPointAdapter(maxTotalHistoricalData, threshold int) *PivotPointAdapter {
-	return &PivotPointAdapter{
+func NewPivotPointAdapter(ctx context.Context, maxTotalHistoricalData, threshold int, monitor monitor.Monitoring) *PivotPointAdapter {
+	adapter := &PivotPointAdapter{
 		PivotPoint:             indicator.NewPivotPoint(),
 		HistoricalValues:       []model.DataPoint{},
 		MaxTotalHistoricalData: maxTotalHistoricalData,
 		Threshold:              threshold,
+		logger:                 logger.GetLogger(),
+	}
+	adapter.registerMetrics(ctx, monitor)
+	return adapter
+}
+
+func (ppa *PivotPointAdapter) registerMetrics(ctx context.Context, m monitor.Monitoring) {
+	ctx = ppa.getUpdateContext(ctx)
+	ppa.metrics = &PivotPointMetrics{
+		monitor:       m,
+		SignalCounter: m.RegisterCounter(ctx, "pivot_point_signals_generated", "Total number of signals generated", []string{constraint.SIGNAL_TYPE_LABEL, ADAPTOR_NAME_LABEL}),
+		LevelGauge:    m.RegisterGauge(ctx, "pivot_point_levels", "Current levels of Pivot, Resistance, and Support", []string{PIVOT_LEVEL_LABEL, ADAPTOR_NAME_LABEL}),
 	}
 }
 
-func (ppa *PivotPointAdapter) Clone() IndicatorAdaptor {
-	return NewPivotPointAdapter(ppa.MaxTotalHistoricalData, ppa.Threshold)
+func (ppa *PivotPointAdapter) Clone(ctx context.Context) IndicatorAdaptor {
+	return NewPivotPointAdapter(ctx, ppa.MaxTotalHistoricalData, ppa.Threshold, ppa.metrics.monitor)
 }
 
-// AddDataPoint adds a new data point and updates the PivotPoint.
-func (ppa *PivotPointAdapter) AddDataPoint(data model.DataPoint) error {
-	if err := ppa.PivotPoint.AddDataPoint(data); err != nil {
+func (ppa *PivotPointAdapter) AddDataPoint(ctx context.Context, data model.DataPoint) error {
+	ctx = ppa.getUpdateContext(ctx)
+	ppa.logger.Debug(ctx, "Adding data point to PivotPointAdapter", zap.Int64("timestamp", data.Time))
+
+	if err := ppa.PivotPoint.AddDataPoint(ctx, data); err != nil {
 		return err
 	}
 	ppa.CurrentData = data
-	ppa.updateHistoricalValues()
+	ppa.updateHistoricalValues(ctx)
 	return nil
 }
 
-func (ppa *PivotPointAdapter) updateHistoricalValues() {
-	ppa.PivotPoint.GetPivotLevels()
+func (ppa *PivotPointAdapter) updateHistoricalValues(ctx context.Context) {
+	levels := ppa.PivotPoint.GetPivotLevels()
 	ppa.HistoricalValues = append(ppa.HistoricalValues, ppa.CurrentData)
 	if len(ppa.HistoricalValues) > ppa.MaxTotalHistoricalData {
 		ppa.HistoricalValues = ppa.HistoricalValues[1:]
 	}
+
+	// Update Level metrics
+	ppa.updateLevelMetrics(ctx, levels)
 }
 
-// Name returns the name of the PivotPoint adapter.
+func (ppa *PivotPointAdapter) updateLevelMetrics(ctx context.Context, levels indicator.PivotLevels) {
+	tags := monitor.NewTagsKV(ADAPTOR_NAME_LABEL, ppa.Name())
+	ppa.metrics.LevelGauge.SetGauge(ctx, levels.Pivot, tags.With(PIVOT_LEVEL_LABEL, "Pivot"))
+	ppa.metrics.LevelGauge.SetGauge(ctx, levels.Resistance1, tags.With(PIVOT_LEVEL_LABEL, "Resistance1"))
+	ppa.metrics.LevelGauge.SetGauge(ctx, levels.Resistance2, tags.With(PIVOT_LEVEL_LABEL, "Resistance2"))
+	ppa.metrics.LevelGauge.SetGauge(ctx, levels.Resistance3, tags.With(PIVOT_LEVEL_LABEL, "Resistance3"))
+	ppa.metrics.LevelGauge.SetGauge(ctx, levels.Support1, tags.With(PIVOT_LEVEL_LABEL, "Support1"))
+	ppa.metrics.LevelGauge.SetGauge(ctx, levels.Support2, tags.With(PIVOT_LEVEL_LABEL, "Support2"))
+	ppa.metrics.LevelGauge.SetGauge(ctx, levels.Support3, tags.With(PIVOT_LEVEL_LABEL, "Support3"))
+}
+
 func (ppa *PivotPointAdapter) Name() string {
-	return "PivotPoint"
+	return fmt.Sprintf("PivotPoint_%d_%d", ppa.MaxTotalHistoricalData, ppa.Threshold)
 }
 
-// GetSignal returns a trading signal based on the PivotPoint logic.
-func (ppa *PivotPointAdapter) GetSignal() model.StockAction {
+func (ppa *PivotPointAdapter) GetSignal(ctx context.Context) (result model.StockAction) {
+	ctx = ppa.getUpdateContext(ctx)
+	defer func() {
+		tags := monitor.NewTagsKV(constraint.SIGNAL_TYPE_LABEL, string(result))
+		tags.Add(ADAPTOR_NAME_LABEL, ppa.Name())
+		ppa.metrics.SignalCounter.IncrementCounter(ctx, tags)
+	}()
+
+	zaps := []zap.Field{zap.String("adapter", ppa.Name()), zap.Any("time", ppa.CurrentData.Time)}
 	if len(ppa.HistoricalValues) == 0 {
+		ppa.logger.Debug(ctx, "No historical data available", zaps...)
 		return model.Wait
 	}
 	if !ppa.PivotPoint.Initialized {
+		ppa.logger.Debug(ctx, "PivotPoint not initialized", zaps...)
 		return model.Wait
 	}
 
@@ -68,16 +120,17 @@ func (ppa *PivotPointAdapter) GetSignal() model.StockAction {
 
 	recentTests := ppa.calculateRecentTests()
 
-	// Evaluate buy signals based on resistance levels
 	if ppa.evaluateBuySignal(lastData, lastPivot, recentTests) {
+		ppa.logger.Info(ctx, "Buy signal detected", zaps...)
 		return model.Buy
 	}
 
-	// Evaluate sell signals based on support levels
 	if ppa.evaluateSellSignal(lastData, lastPivot, recentTests) {
+		ppa.logger.Info(ctx, "Sell signal detected", zaps...)
 		return model.Sell
 	}
 
+	ppa.logger.Debug(ctx, "No trading signal detected", zaps...)
 	return model.Wait
 }
 
@@ -141,6 +194,12 @@ func (ppa *PivotPointAdapter) evaluateSellSignal(lastData model.DataPoint, lastP
 		return true
 	}
 	return false
+}
+
+// Function to retrieve and update the slice from context
+func (ppa *PivotPointAdapter) getUpdateContext(ctx context.Context) context.Context {
+	ctx = getUpdatedCommonLabelsContext(ctx)
+	return context.WithValue(ctx, ADAPTOR_NAME_LABEL, ppa.Name())
 }
 
 func isWithinRange(value, lowerReference, middleReference, upperReference float64) bool {

@@ -8,40 +8,46 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/vd09/trading-algorithm-backtesting-system/constraint"
 	"github.com/vd09/trading-algorithm-backtesting-system/logger"
 	"go.uber.org/zap"
 )
 
+// metricKey struct to uniquely identify metrics with a name and labels
 type metricKey struct {
-	name   string
-	labels string
+	name string
+	//labels string
 }
 
+func (pm *PrometheusMonitoring) getMetricKey(name string, labels []string) metricKey {
+	return metricKey{name: name}
+	//return metricKey{name: name, labels: fmt.Sprintf("%v", labels)}
+}
+
+// PrometheusMonitoring struct containing mutex, maps for different types of metrics, and a logger
 type PrometheusMonitoring struct {
-	mu         sync.Mutex
-	counters   map[metricKey]*prometheus.CounterVec
-	gauges     map[metricKey]*prometheus.GaugeVec
-	histograms map[metricKey]*prometheus.HistogramVec
+	mu         sync.RWMutex
+	counters   map[metricKey]*CounterVecMetric
+	gauges     map[metricKey]*GaugeVecMetric
+	histograms map[metricKey]*HistogramVecMetrics
 	logger     logger.LoggerInterface
 }
 
+// NewPrometheusMonitoring initializes and returns a new PrometheusMonitoring instance
 func NewPrometheusMonitoring() *PrometheusMonitoring {
 	return &PrometheusMonitoring{
-		counters:   make(map[metricKey]*prometheus.CounterVec),
-		gauges:     make(map[metricKey]*prometheus.GaugeVec),
-		histograms: make(map[metricKey]*prometheus.HistogramVec),
+		counters:   make(map[metricKey]*CounterVecMetric),
+		gauges:     make(map[metricKey]*GaugeVecMetric),
+		histograms: make(map[metricKey]*HistogramVecMetrics),
 		logger:     logger.GetLogger(),
 	}
 }
 
-func (pm *PrometheusMonitoring) getMetricKey(name string, labels []string) metricKey {
-	return metricKey{name: name, labels: fmt.Sprintf("%v", labels)}
-}
-
-func (pm *PrometheusMonitoring) registerCounter(ctx context.Context, name string, help string, labels []string) *prometheus.CounterVec {
+// registerCounter registers and returns a new counter metric if it doesn't already exist
+func (pm *PrometheusMonitoring) registerCounter(ctx context.Context, name string, help string, labels []string) *CounterVecMetric {
+	key := pm.getMetricKey(name, labels)
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	key := pm.getMetricKey(name, labels)
 	if counter, exists := pm.counters[key]; exists {
 		return counter
 	}
@@ -50,15 +56,20 @@ func (pm *PrometheusMonitoring) registerCounter(ctx context.Context, name string
 		Help: help,
 	}, labels)
 	prometheus.MustRegister(newCounter)
-	pm.counters[key] = newCounter
+	counterWithIncrement := &CounterVecMetric{
+		CounterVec: newCounter,
+		logger:     pm.logger,
+	}
+	pm.counters[key] = counterWithIncrement
 	pm.logger.Info(ctx, "Registered new counter", zap.String("name", name), zap.String("labels", fmt.Sprintf("%v", labels)))
-	return newCounter
+	return counterWithIncrement
 }
 
-func (pm *PrometheusMonitoring) registerGauge(ctx context.Context, name string, help string, labels []string) *prometheus.GaugeVec {
+// registerGauge registers and returns a new gauge metric if it doesn't already exist
+func (pm *PrometheusMonitoring) registerGauge(ctx context.Context, name string, help string, labels []string) GaugeMetric {
+	key := pm.getMetricKey(name, labels)
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	key := pm.getMetricKey(name, labels)
 	if gauge, exists := pm.gauges[key]; exists {
 		return gauge
 	}
@@ -67,15 +78,20 @@ func (pm *PrometheusMonitoring) registerGauge(ctx context.Context, name string, 
 		Help: help,
 	}, labels)
 	prometheus.MustRegister(newGauge)
-	pm.gauges[key] = newGauge
+	gaugeWithSet := &GaugeVecMetric{
+		GaugeVec: newGauge,
+		logger:   pm.logger,
+	}
+	pm.gauges[key] = gaugeWithSet
 	pm.logger.Info(ctx, "Registered new gauge", zap.String("name", name), zap.String("labels", fmt.Sprintf("%v", labels)))
-	return newGauge
+	return gaugeWithSet
 }
 
-func (pm *PrometheusMonitoring) registerHistogram(ctx context.Context, name string, help string, buckets []float64, labels []string) *prometheus.HistogramVec {
+// registerHistogram registers and returns a new histogram metric if it doesn't already exist
+func (pm *PrometheusMonitoring) registerHistogram(ctx context.Context, name string, help string, buckets []float64, labels []string) *HistogramVecMetrics {
+	key := pm.getMetricKey(name, labels)
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	key := pm.getMetricKey(name, labels)
 	if histogram, exists := pm.histograms[key]; exists {
 		return histogram
 	}
@@ -85,38 +101,39 @@ func (pm *PrometheusMonitoring) registerHistogram(ctx context.Context, name stri
 		Buckets: buckets,
 	}, labels)
 	prometheus.MustRegister(newHistogram)
-	pm.histograms[key] = newHistogram
+	histogramWithObserve := &HistogramVecMetrics{
+		HistogramVec: newHistogram,
+		logger:       pm.logger,
+	}
+	pm.histograms[key] = histogramWithObserve
 	pm.logger.Info(ctx, "Registered new histogram", zap.String("name", name), zap.String("labels", fmt.Sprintf("%v", labels)))
-	return newHistogram
+	return histogramWithObserve
 }
 
-func (pm *PrometheusMonitoring) RegisterCounter(ctx context.Context, name string, help string, labels []string) *prometheus.CounterVec {
-	return pm.registerCounter(ctx, name, help, labels)
+// RegisterCounter is a public method to register a counter
+func (pm *PrometheusMonitoring) RegisterCounter(ctx context.Context, name string, help string, labels Labels) CounterMetric {
+	return pm.registerCounter(ctx, name, help, pm.addCommonLabels(ctx, labels))
 }
 
-func (pm *PrometheusMonitoring) RegisterGauge(ctx context.Context, name string, help string, labels []string) *prometheus.GaugeVec {
-	return pm.registerGauge(ctx, name, help, labels)
+// RegisterGauge is a public method to register a gauge
+func (pm *PrometheusMonitoring) RegisterGauge(ctx context.Context, name string, help string, labels Labels) GaugeMetric {
+	return pm.registerGauge(ctx, name, help, pm.addCommonLabels(ctx, labels))
 }
 
-func (pm *PrometheusMonitoring) RegisterHistogram(ctx context.Context, name string, help string, buckets []float64, labels []string) *prometheus.HistogramVec {
-	return pm.registerHistogram(ctx, name, help, buckets, labels)
+// RegisterHistogram is a public method to register a histogram
+func (pm *PrometheusMonitoring) RegisterHistogram(ctx context.Context, name string, help string, buckets []float64, labels Labels) HistogramMetrics {
+	return pm.registerHistogram(ctx, name, help, buckets, pm.addCommonLabels(ctx, labels))
 }
 
-func (pm *PrometheusMonitoring) IncrementCounter(ctx context.Context, counter *prometheus.CounterVec, tags Tags) {
-	counter.With(tags.Get()).Inc()
-	pm.logger.Info(ctx, "Incremented counter", zap.Any("tags", tags.Get()))
+func (pm *PrometheusMonitoring) addCommonLabels(ctx context.Context, labels Labels) Labels {
+	labels = append(Labels{}, labels...)
+	if slice, ok := ctx.Value(constraint.COMMON_LABELS_CTX).(Labels); ok {
+		labels = append(labels, slice...)
+	}
+	return labels
 }
 
-func (pm *PrometheusMonitoring) SetGauge(ctx context.Context, gauge *prometheus.GaugeVec, value float64, tags Tags) {
-	gauge.With(tags.Get()).Set(value)
-	pm.logger.Info(ctx, "Set gauge", zap.Float64("value", value), zap.Any("tags", tags.Get()))
-}
-
-func (pm *PrometheusMonitoring) ObserveHistogram(ctx context.Context, histogram *prometheus.HistogramVec, value float64, tags Tags) {
-	histogram.With(tags.Get()).Observe(value)
-	pm.logger.Info(ctx, "Observed histogram", zap.Float64("value", value), zap.Any("tags", tags.Get()))
-}
-
+// ExposeMetrics sets up an HTTP server to expose the /metrics endpoint for Prometheus scraping
 func (pm *PrometheusMonitoring) ExposeMetrics(addr string) {
 	http.Handle("/metrics", promhttp.Handler())
 	pm.logger.Info(nil, "Exposing metrics", zap.String("address", addr))

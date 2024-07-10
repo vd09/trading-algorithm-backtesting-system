@@ -1,6 +1,10 @@
 package indicator
 
-import "github.com/vd09/trading-algorithm-backtesting-system/model"
+import (
+	"context"
+
+	"github.com/vd09/trading-algorithm-backtesting-system/model"
+)
 
 // EMA represents the state of the EMA indicator for a single period.
 type EMA struct {
@@ -22,7 +26,7 @@ func NewEMA(period int) *EMA {
 }
 
 // AddDataPoint updates the EMA with a new data point and recalculates the EMA.
-func (e *EMA) AddDataPoint(data model.DataPoint) {
+func (e *EMA) AddDataPoint(ctx context.Context, data model.DataPoint) {
 	if !e.Initialized {
 		e.InitPricesForSMA = append(e.InitPricesForSMA, data.Close)
 		if len(e.InitPricesForSMA) == e.Period {
